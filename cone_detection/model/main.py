@@ -12,6 +12,7 @@ import pathlib
 from ultralytics import YOLO
 import math
 from geometry_msgs.msg import Pose
+from nav_msgs.msg import Odometry
 
 class ConeDetectionNode(Node):
     def __init__(self):
@@ -23,7 +24,7 @@ class ConeDetectionNode(Node):
         self.classNames = ["cone"]
         
         self.subscription_odom = self.create_subscription(
-            Pose,
+            Odometry,
             '/odom',
             self.odom_callback,
             10)
@@ -54,7 +55,7 @@ class ConeDetectionNode(Node):
         self.publisher_ = self.create_publisher(
             Image,
             '/cones',
-            1)
+            10)
             
         self.detect_pub = self.create_publisher(Pose, 'destination_pose',10)
         self.caminfo = None
@@ -62,9 +63,10 @@ class ConeDetectionNode(Node):
         self.bridge = CvBridge()
         
     def odom_callback(self, msg):
-    	self.x_pos = msg.position.x
-    	self.y_pos = msg.position.y
-    	self.z_pos = msg.position.z
+        self.x_pos = msg.pose.pose.position.x
+        self.y_pos = msg.pose.pose.position.y
+        self.z_pos = msg.pose.pose.position.z
+        self.orientation = msg.pose.pose.orientation.z*57.2958
         
     def depth_callback(self, msg):
         self.depth_img = self.bridge.imgmsg_to_cv2(msg)
@@ -76,7 +78,7 @@ class ConeDetectionNode(Node):
         # Add parameter settings or modifications as needed
         # rgb = cv.flip(rgb, 0)
         
-        results = self.model(rgb)
+        results = self.model(rgb, verbose = False)
         # img_rgb = cv.cvtColor(rgb, cv.COLOR_BGR2RGB)
         # img_rgb = cv.resize(rgb, (200, 200))
         # img_rgb = rgb
@@ -87,6 +89,9 @@ class ConeDetectionNode(Node):
         camera_cy = self.caminfo.k[5]
         camera_fx = self.caminfo.k[0]
         camera_fy = self.caminfo.k[4]
+
+        self.new_centroids = {}
+        
         for r in results:
             boxes = r.boxes
     
@@ -111,11 +116,11 @@ class ConeDetectionNode(Node):
 
                 # confidence
                 confidence = math.ceil((box.conf[0]*100))/100
-                print("Confidence --->",confidence)
-                print(f'point is at:({x} , {y}, {z})')
+                # print("Confidence --->",confidence)
+                # print(f'point is at:({x} , {y}, {z})')
                 # class name
                 cls = int(box.cls[0])
-                print("Class name -->", self.classNames[cls])
+                # print("Class name -->", self.classNames[cls])
                 coordinates=[]
                 coordinates.append([confidence,x,y,z])
 
@@ -131,39 +136,38 @@ class ConeDetectionNode(Node):
                 if coordinates:
                     if not coordinates[0]:
                         continue
-                        
-                    self.new_centroids = {}
                     
                     for i in coordinates:
-                        confidence, x, y = i[0], i[1], i[2]
-                        self.new_centroids[confidence] = [i[1], i[2]]
+                        confidence, x, z = i[0], i[1], i[3]
+                        self.new_centroids[confidence] = [i[1], i[3]]
                         
-                    l = list(self.new_centroids.keys())
-                    l.sort()
-                    
-                    if len(l) < 2:
-                    	continue
-                    	
-                    centroids = [self.new_centroids[l[-1]], self.new_centroids[l[-2]]]
-                    self.mean_centroid = 0.50*centroids[1] + 0.50*centroids[0]
-                    #self.get_logger().info(f"Mean Centroid: {self.mean_centroid}")
-                    #self.publish_trajectory(self.mean_centroid,centroids)
+        l = list(self.new_centroids.keys())
+        l.sort()
 
-                msg = Pose()
-                msg.position.x = self.mean_centroid[1] + self.x_pos
-                msg.position.y = self.mean_centroid[0] + self.y_pos
-                msg.position.z = 0 + self.z_pos
-                msg.orientation.x = 0.0
-                msg.orientation.y = 0.0
-                msg.orientation.z = 0.0
-                msg.orientation.w = 1.0
-                self.detect_pub.publish(msg)
-                self.get_logger().info(f'Publishing: Position=({msg.position.x}, {msg.position.y}')
-                
-        cv.imshow("IMAGE", self.depth_img)
+        cv.imshow("IMAGE", rgb)
         cv.waitKey(1)
         
-        return self.depth_img
+        if len(l) < 2:
+            return rgb
+        
+        centroids = [self.new_centroids[l[-1]], self.new_centroids[l[-2]]]
+        self.mean_centroid = (0.50*(centroids[0][0]+centroids[1][0]), 0.50*(centroids[0][1]+centroids[1][1]))
+        #self.get_logger().info(f"Mean Centroid: {self.mean_centroid}")
+        #self.publish_trajectory(self.mean_centroid,centroids)
+
+        msg = Pose()
+        msg.position.x = self.mean_centroid[0] + self.x_pos*math.cos(self.orientation)
+        msg.position.y = self.mean_centroid[1] + self.y_pos*math.sin(self.orientation)
+        print(msg.position.x, msg.position.y)
+        msg.position.z = 0.0
+        msg.orientation.x = 0.0
+        msg.orientation.y = 0.0
+        msg.orientation.z = 0.0
+        msg.orientation.w = 1.0
+        self.detect_pub.publish(msg)
+        self.get_logger().info(f'Publishing: Position=({msg.position.x}, {msg.position.y}')
+        
+        return rgb
 
     def image_callback(self, data):
         try:
