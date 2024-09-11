@@ -1,0 +1,106 @@
+[0.010s] Invoking command in '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/bhanu/abhiyaan/cone_detection/src/cone_detection -DCMAKE_INSTALL_PREFIX=/home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection
+[0.112s] -- The C compiler identification is GNU 11.4.0
+[0.202s] -- The CXX compiler identification is GNU 11.4.0
+[0.211s] -- Detecting C compiler ABI info
+[0.279s] -- Detecting C compiler ABI info - done
+[0.289s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.289s] -- Detecting C compile features
+[0.290s] -- Detecting C compile features - done
+[0.295s] -- Detecting CXX compiler ABI info
+[0.368s] -- Detecting CXX compiler ABI info - done
+[0.377s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.377s] -- Detecting CXX compile features
+[0.377s] -- Detecting CXX compile features - done
+[0.388s] -- Found ament_cmake: 1.3.9 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.540s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[0.635s] -- Found rclpy: 3.3.13 (/opt/ros/humble/share/rclpy/cmake)
+[0.638s] -- Found rclcpp: 16.0.9 (/opt/ros/humble/share/rclcpp/cmake)
+[0.698s] -- Found rosidl_generator_c: 3.1.5 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[0.704s] -- Found rosidl_adapter: 3.1.5 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.715s] -- Found rosidl_generator_cpp: 3.1.5 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[0.735s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.759s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.833s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[0.837s] -- Found rmw_cyclonedds_cpp: 1.3.4 (/opt/ros/humble/share/rmw_cyclonedds_cpp/cmake)
+[0.880s] -- Using RMW implementation 'rmw_cyclonedds_cpp' as default
+[0.891s] -- Looking for pthread.h
+[0.957s] -- Looking for pthread.h - found
+[0.958s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[1.021s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+[1.022s] -- Found Threads: TRUE  
+[1.257s] -- Found ament_lint_auto: 0.12.11 (/opt/ros/humble/share/ament_lint_auto/cmake)
+[1.331s] -- Added test 'cppcheck' to perform static code analysis on C / C++ code
+[1.332s] -- Configured cppcheck include dirs: 
+[1.332s] -- Configured cppcheck exclude dirs and/or files: 
+[1.333s] -- Added test 'flake8' to check Python code syntax and style conventions
+[1.335s] -- Added test 'lint_cmake' to check CMake code style
+[1.336s] -- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+[1.340s] -- Added test 'uncrustify' to check C / C++ code style
+[1.340s] -- Configured uncrustify additional arguments: 
+[1.341s] -- Added test 'xmllint' to check XML markup files
+[1.343s] -- Configuring done
+[1.349s] -- Generating done
+[1.352s] -- Build files have been written to: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection
+[1.363s] Invoked command in '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/bhanu/abhiyaan/cone_detection/src/cone_detection -DCMAKE_INSTALL_PREFIX=/home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection
+[1.365s] Invoking command in '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection -- -j8 -l8
+[1.413s] Built target ament_cmake_python_copy_cone_detection
+[1.708s] running egg_info
+[1.709s] creating cone_detection.egg-info
+[1.709s] writing cone_detection.egg-info/PKG-INFO
+[1.709s] writing dependency_links to cone_detection.egg-info/dependency_links.txt
+[1.709s] writing top-level names to cone_detection.egg-info/top_level.txt
+[1.709s] writing manifest file 'cone_detection.egg-info/SOURCES.txt'
+[1.712s] reading manifest file 'cone_detection.egg-info/SOURCES.txt'
+[1.713s] writing manifest file 'cone_detection.egg-info/SOURCES.txt'
+[1.748s] Built target ament_cmake_python_build_cone_detection_egg
+[1.757s] Invoked command in '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection -- -j8 -l8
+[1.783s] Invoking command in '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection
+[1.789s] -- Install configuration: ""
+[1.789s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/environment/pythonpath.sh
+[1.789s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/environment/pythonpath.dsv
+[1.789s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection-0.0.0-py3.10.egg-info
+[1.789s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection-0.0.0-py3.10.egg-info/PKG-INFO
+[1.790s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection-0.0.0-py3.10.egg-info/dependency_links.txt
+[1.790s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection-0.0.0-py3.10.egg-info/top_level.txt
+[1.790s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection-0.0.0-py3.10.egg-info/SOURCES.txt
+[1.790s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection
+[1.790s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection/.ipynb_checkpoints
+[1.790s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection/.ipynb_checkpoints/main-checkpoint.py
+[1.790s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection/__init__.py
+[1.790s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection/main.py
+[1.823s] Listing '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection'...
+[1.823s] Listing '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection/.ipynb_checkpoints'...
+[1.823s] Compiling '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection/.ipynb_checkpoints/main-checkpoint.py'...
+[1.823s] Compiling '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection/__init__.py'...
+[1.823s] Compiling '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/local/lib/python3.10/dist-packages/cone_detection/main.py'...
+[1.831s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/model
+[1.831s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/model/.ipynb_checkpoints
+[1.831s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/model/.ipynb_checkpoints/main-checkpoint.py
+[1.832s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/model/main.py
+[1.832s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/launch
+[1.832s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/launch/.ipynb_checkpoints
+[1.832s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/launch/.ipynb_checkpoints/object_detection.launch-checkpoint.py
+[1.832s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/launch/cone_detection.launch.py
+[1.832s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/cone_detection
+[1.832s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/cone_detection/.ipynb_checkpoints
+[1.832s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/cone_detection/.ipynb_checkpoints/main-checkpoint.py
+[1.833s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/cone_detection/__init__.py
+[1.833s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/cone_detection/main.py
+[1.833s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/src
+[1.833s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/lib/cone_detection/main.py
+[1.833s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/ament_index/resource_index/package_run_dependencies/cone_detection
+[1.833s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/ament_index/resource_index/parent_prefix_path/cone_detection
+[1.833s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/environment/ament_prefix_path.sh
+[1.834s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/environment/ament_prefix_path.dsv
+[1.834s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/environment/path.sh
+[1.834s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/environment/path.dsv
+[1.834s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/local_setup.bash
+[1.834s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/local_setup.sh
+[1.834s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/local_setup.zsh
+[1.835s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/local_setup.dsv
+[1.835s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/package.dsv
+[1.835s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/ament_index/resource_index/packages/cone_detection
+[1.835s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/cmake/cone_detectionConfig.cmake
+[1.835s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/cmake/cone_detectionConfig-version.cmake
+[1.835s] -- Installing: /home/bhanu/abhiyaan/cone_detection/src/cone_detection/install/cone_detection/share/cone_detection/package.xml
+[1.838s] Invoked command in '/home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/bhanu/abhiyaan/cone_detection/src/cone_detection/build/cone_detection

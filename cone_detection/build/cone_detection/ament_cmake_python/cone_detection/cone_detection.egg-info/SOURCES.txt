@@ -1,0 +1,7 @@
+setup.py
+cone_detection/__init__.py
+cone_detection/main.py
+cone_detection.egg-info/PKG-INFO
+cone_detection.egg-info/SOURCES.txt
+cone_detection.egg-info/dependency_links.txt
+cone_detection.egg-info/top_level.txt

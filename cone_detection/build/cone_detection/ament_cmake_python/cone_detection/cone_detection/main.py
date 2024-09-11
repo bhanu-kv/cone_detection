@@ -269,7 +269,7 @@ class ConeDetectionNode(Node):
                 u = int((x1+x2)/2)
                 v = int((y1+y2)/2)
                                 
-                z = depth_image[v][u] / camera_factor
+                z = depth_image[u][v] / camera_factor
                 x = (u - camera_cx) * z / camera_fx
                 y = (v - camera_cy) * z / camera_fy
 
