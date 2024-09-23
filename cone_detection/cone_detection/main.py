@@ -186,7 +186,6 @@ class ConeDetectionNode(Node):
             new_v[i][0] = self.x_pos + x*math.cos(self.orientation) - y*math.sin(self.orientation)
             new_v[i][1] = self.y_pos + x*math.sin(self.orientation) + y*math.cos(self.orientation)
 
-        # centroids = [new_v[l[-1]], new_v[l[-2]]]
         mean_centroid = (0.50*(new_v[0][0]+new_v[1][0]), 0.50*(new_v[0][1]+new_v[1][1]))
         self.get_logger().info(f"Mean Centroid: {mean_centroid}")
 
@@ -206,15 +205,51 @@ class ConeDetectionNode(Node):
 
     def display_image(self):
         if(self.dual_camera == True):
-            numpy_horizontal_concat = np.concatenate((self.rgb_camera1, self.rgb_camera2), axis=1)
-            cv.imshow("IMAGE", numpy_horizontal_concat)
+            height, width, channels = self.rgb_camera1.shape
+
+            # Define the thickness of the vertical black line
+            line_thickness = 10  # Adjust thickness as needed
+
+            # Create a black vertical line with the same height and desired thickness
+            # The line is a numpy array filled with zeros (black)
+            black_line = np.zeros((height, line_thickness, channels), dtype=np.uint8)
+
+            numpy_horizontal_concat = np.concatenate((self.rgb_camera1, black_line, self.rgb_camera2), axis=1)
+
+
+            # Create a blank space above the images to place the text
+            text_space_height = 50  # Height of the space for text
+            text_space = np.zeros((text_space_height, numpy_horizontal_concat.shape[1], channels), dtype=np.uint8)
+
+            # Add text to the text_space
+            font = cv.FONT_HERSHEY_SIMPLEX
+            font_scale = 1
+            color = (255, 255, 255)  # White text
+            thickness = 2
+
+            # Calculate the position of "Image 1" and "Image 2"
+            # Text will be centered horizontally in each half
+            text_size_image1 = cv.getTextSize("Left Camera", font, font_scale, thickness)[0]
+            text_x_image1 = (width - text_size_image1[0]) // 2  # Centering text for Image 1
+            text_y = text_space_height // 2 + text_size_image1[1] // 2  # Center vertically in the text space
+
+            text_size_image2 = cv.getTextSize("Right Camera", font, font_scale, thickness)[0]
+            text_x_image2 = width + line_thickness + (width - text_size_image2[0]) // 2  # Centering text for Image 2
+
+            # Put the text on the blank space above the images
+            cv.putText(text_space, "Left Camera", (text_x_image1, text_y), font, font_scale, color, thickness)
+            cv.putText(text_space, "Right Camera", (text_x_image2, text_y), font, font_scale, color, thickness)
+
+            # Concatenate the text space on top of the images
+            final_image = np.concatenate((text_space, numpy_horizontal_concat), axis=0)
+
+            cv.imshow("IMAGE", final_image)
             cv.waitKey(1)
         
         return
 
     def cone_detection(self, rgb, camera_name):
         # Add parameter settings or modifications as needed
-        
         results = self.model(rgb, verbose = False)
 
         cl_box = []
