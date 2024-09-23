@@ -176,9 +176,6 @@ class ConeDetectionNode(Node):
         for i in [-1, -2]:
             x, y = v[i][0][0], v[i][0][1]
 
-            # magnitude = math.sqrt(x**2 + y**2)
-            # angle = math.atan(y/x)
-
             if v[i][-1] == "camera1":
                 x += camera_common_radius*math.sin(camera_subtended_angle/2)
                 y += -caster_pos_y/2 + camera_common_radius*math.cos(camera_subtended_angle/2)
@@ -188,27 +185,10 @@ class ConeDetectionNode(Node):
             
             new_v[i][0] = self.x_pos + x*math.cos(self.orientation) - y*math.sin(self.orientation)
             new_v[i][1] = self.y_pos + x*math.sin(self.orientation) + y*math.cos(self.orientation)
-            
-            # if v[i][-1] == "camera1":
-            #     if(self.orientation>=0 and self.orientation <=3.1416):
-            #         new_v[i][0] = self.x_pos + magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
-            #         new_v[i][1] = self.y_pos + magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
-            #     else:
-            #         new_v[i][0] = self.x_pos + magnitude*math.cos(-self.orientation + (self.camera1_orientation+angle))
-            #         new_v[i][1] = self.y_pos + magnitude*math.sin(-self.orientation + (self.camera1_orientation+angle))
-            
-            # elif v[i][-1] == "camera2":
-            #     if(self.orientation>=0 and self.orientation <=3.1416):
-            #         new_v[i][0] = self.x_pos + magnitude*math.cos(-self.orientation + (self.camera2_orientation+angle))
-            #         new_v[i][1] = self.y_pos + magnitude*math.sin(-self.orientation + (self.camera2_orientation+angle))
-            #     else:
-            #         new_v[i][0] = self.x_pos + magnitude*math.cos(self.orientation + (self.camera2_orientation+angle))
-            #         new_v[i][1] = self.y_pos + magnitude*math.sin(self.orientation + (self.camera2_orientation+angle)) 
 
-        centroids = [self.new_centroids[l[-1]], self.new_centroids[l[-2]]]
-        mean_centroid = (0.50*(centroids[0][0]+centroids[1][0]), 0.50*(centroids[0][1]+centroids[1][1]))
-        #self.get_logger().info(f"Mean Centroid: {mean_centroid}")
-        #self.publish_trajectory(mean_centroid,centroids)
+        # centroids = [new_v[l[-1]], new_v[l[-2]]]
+        mean_centroid = (0.50*(new_v[0][0]+new_v[1][0]), 0.50*(new_v[0][1]+new_v[1][1]))
+        self.get_logger().info(f"Mean Centroid: {mean_centroid}")
 
         msg = Pose()
         msg.position.x = mean_centroid[0]
@@ -221,8 +201,6 @@ class ConeDetectionNode(Node):
         msg.orientation.w = 1.0
 
         self.detect_pub.publish(msg)
-        self.get_logger().info(f'Publishing: Position=({new_v})') 
-        # self.get_logger().info(f'Publishing: Position=(v2: {v2})')
         
         return
 
@@ -289,11 +267,9 @@ class ConeDetectionNode(Node):
 
                 # confidence
                 confidence = math.ceil((box.conf[0]*100))/100
-                # print("Confidence --->",confidence)
-                # print(f'point is at:({x} , {y}, {z})')
+
                 # class name
                 cls = int(box.cls[0])
-                # print("Class name -->", self.classNames[cls])
                 coordinates=[]
                 coordinates.append([confidence,x,y,z])
 
