@@ -16,12 +16,12 @@ from nav_msgs.msg import Odometry
 from tf_transformations import euler_from_quaternion
 
 pi = 3.14
-rot_angle = 0.872665
 tilt_angle = 0.296706
 camera_common_radius = 0.03
-camera_subtended_angle = 1.57
+camera_subtended_angle = 1.91986
 caster_pos_y = 0.45
-cone_radius = 0.2
+cone_radius = 0.1
+rot_angle = -1*(-pi/2 + camera_subtended_angle/2)
 
 def cal_rel_cam(v, tilt_angle, rot_angle):
     rx = np.asarray(
@@ -53,8 +53,8 @@ class ConeDetectionNode(Node):
     def __init__(self):
         super().__init__('cone_detection')
 
-        self.camera1_orientation = -2.355
-        self.camera2_orientation = -0.785
+        self.camera1_orientation = -rot_angle-pi/2
+        self.camera2_orientation = -rot_angle
 
         self.rgb_camera1 = np.empty( shape=(0, 0) )
         self.rgb_camera2 = np.empty( shape=(0, 0) )
@@ -123,8 +123,8 @@ class ConeDetectionNode(Node):
             10)
             
         # self.detect_pub = self.create_publisher(Pose, 'destination_pose',10)
-        self.detec_cone1_pub = self.create_publisher(Pose, 'cone1_pose',10)
-        self.detec_cone2_pub = self.create_publisher(Pose, 'cone2_pose',10)
+        self.detec_cone1_pub = self.create_publisher(Pose, 'cone1_pose', 10)
+        self.detec_cone2_pub = self.create_publisher(Pose, 'cone2_pose', 10)
         
         self.caminfo1 = None
         self.depth_img1 = None
