@@ -14,6 +14,8 @@ import math
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 
+pi = 3.14
+
 class ConeDetectionNode(Node):
     def __init__(self):
         super().__init__('cone_detection')
@@ -147,8 +149,34 @@ class ConeDetectionNode(Node):
         
         l.sort()
 
-        temp = (self.new_centroids[l[-1]][0], self.new_centroids[l[-1]][1])
-        temp2 = (self.new_centroids[l[-2]][0], self.new_centroids[l[-2]][1])
+        # camera1_transform = [[math.cos(), -math.sin()]
+        #                      [math.sin(), math.cos()]]
+        rx = np.asarray(
+            [[1, 0, 0],
+            [0, np.cos(pi/4), -np.sin(pi/4)],
+            [0, np.sin(pi/4), np.cos(pi/4)]]
+        )
+        
+        ry = np.asarray(
+            [[np.cos(pi/3), 0 ,np.sin(pi/3)],
+            [0, 1, 0],
+            [-np.sin(pi/3), 0, np.cos(pi/3)]]
+        )
+
+        rz = np.asarray(
+            [[np.cos(pi/2), -np.sin(pi/2), 0],
+            [np.sin(pi/2), np.cos(pi/2), 0],
+            [0, 0, 1]]
+        )
+
+        print(rx)
+
+        # v_1 = np.dot(rx, np.array([]))
+        # ry = [cos(pi/3) 0 sin(pi/3); 0 1 0; -sin(pi/3) 0 cos(pi/3)]
+        # rz = [cos(pi/2) -sin(pi/2) 0; sin(pi/2) cos(pi/2) 0; 0 0 1]
+
+        temp = (self.new_centroids[l[-1]][0], self.new_centroids[l[-1]][1], self.new_centroids[l[-1]][2])
+        temp2 = (self.new_centroids[l[-2]][0], self.new_centroids[l[-2]][1], self.new_centroids[l[-2]][2])
 
         for i in [-1, -2]:
             
@@ -203,8 +231,8 @@ class ConeDetectionNode(Node):
         msg.orientation.w = 1.0
 
         self.detect_pub.publish(msg)
-        self.get_logger().info(f'Publishing: Position=({temp[0]}, {temp[1]}')
-        self.get_logger().info(f'Publishing: Position=({temp2[0]}, {temp2[1]}')
+        self.get_logger().info(f'Publishing: Position=({temp[0]}, {temp[1]}, {temp[2]})')
+        self.get_logger().info(f'Publishing: Position=({temp2[0]}, {temp2[1]}, {temp2[2]})')
         
         return
 
@@ -269,7 +297,11 @@ class ConeDetectionNode(Node):
                 u = int((x1+x2)/2)
                 v = int((y1+y2)/2)
                                 
-                z = depth_image[u][v] / camera_factor
+                # z = depth_image[v][u] / camera_factor
+                # x = (u - camera_cx) * z / camera_fx
+                # y = (v - camera_cy) * z / camera_fy
+
+                z = depth_image[v][u] / camera_factor
                 x = (u - camera_cx) * z / camera_fx
                 y = (v - camera_cy) * z / camera_fy
 

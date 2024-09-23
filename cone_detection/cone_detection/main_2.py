@@ -14,6 +14,10 @@ import math
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 
+pi = 3.14
+angle1 = 0.872665
+angle2 = 0.296706
+
 class ConeDetectionNode(Node):
     def __init__(self):
         super().__init__('cone_detection')
@@ -147,8 +151,51 @@ class ConeDetectionNode(Node):
         
         l.sort()
 
-        temp = (self.new_centroids[l[-1]][0], self.new_centroids[l[-1]][1])
-        temp2 = (self.new_centroids[l[-2]][0], self.new_centroids[l[-2]][1])
+        rx1 = np.asarray(
+            [[1, 0, 0],
+            [0, np.cos(0), -np.sin(0)],
+            [0, np.sin(0), np.cos(0)]]
+        )
+        
+        ry1 = np.asarray(
+            [[np.cos(angle2), 0 ,np.sin(angle2)],
+            [0, 1, 0],
+            [-np.sin(angle2), 0, np.cos(angle2)]]
+        )
+
+        rz1 = np.asarray(
+            [[np.cos(angle1), -np.sin(angle1), 0],
+            [np.sin(angle1), np.cos(angle1), 0],
+            [0, 0, 1]]
+        )
+
+        rx2 = np.asarray(
+            [[1, 0, 0],
+            [0, np.cos(0), -np.sin(0)],
+            [0, np.sin(0), np.cos(0)]]
+        )
+        
+        ry2 = np.asarray(
+            [[np.cos(angle2), 0 ,np.sin(angle2)],
+            [0, 1, 0],
+            [-np.sin(angle2), 0, np.cos(angle2)]]
+        )
+
+        rz2 = np.asarray(
+            [[np.cos(-angle1), -np.sin(-angle1), 0],
+            [np.sin(-angle1), np.cos(-angle1), 0],
+            [0, 0, 1]]
+        )
+
+        y1, z1, x1 = -1*self.new_centroids[l[-1]][0], -1*self.new_centroids[l[-1]][1], self.new_centroids[l[-1]][2]
+        v1_1 = np.dot(rx1, np.array([x1, y1, z1]))
+        v1_2 = np.dot(ry1, v1_1)
+        v1 = np.dot(rz1, v1_2)
+
+        y2, z2, x2 = -1*self.new_centroids[l[-2]][0], -1*self.new_centroids[l[-2]][1], self.new_centroids[l[-2]][2]
+        v2_1 = np.dot(rx2, np.array([x2, y2, z2]))
+        v2_2 = np.dot(ry2, v2_1)
+        v2 = np.dot(rz2, v2_2)
 
         for i in [-1, -2]:
             
@@ -203,8 +250,8 @@ class ConeDetectionNode(Node):
         msg.orientation.w = 1.0
 
         self.detect_pub.publish(msg)
-        self.get_logger().info(f'Publishing: Position=({temp[0]}, {temp[1]}')
-        self.get_logger().info(f'Publishing: Position=({temp2[0]}, {temp2[1]}')
+        self.get_logger().info(f'Publishing: Position=({v1})')
+        self.get_logger().info(f'Publishing: Position=({v2})')
         
         return
 
@@ -269,7 +316,11 @@ class ConeDetectionNode(Node):
                 u = int((x1+x2)/2)
                 v = int((y1+y2)/2)
                                 
-                z = depth_image[u][v] / camera_factor
+                # z = depth_image[v][u] / camera_factor
+                # x = (u - camera_cx) * z / camera_fx
+                # y = (v - camera_cy) * z / camera_fy
+
+                z = depth_image[v][u]
                 x = (u - camera_cx) * z / camera_fx
                 y = (v - camera_cy) * z / camera_fy
 
@@ -297,8 +348,8 @@ class ConeDetectionNode(Node):
                         continue
                     
                     for i in coordinates:
-                        confidence, x, z = i[0], i[1], i[3]
-                        self.new_centroids[confidence] = [i[1], i[3], camera_name]
+                        confidence, x, y, z = i[0], i[1], i[2], i[3]
+                        self.new_centroids[confidence] = [i[1], i[2], i[3], camera_name]
 
         self.publish_coordinates(camera_name)
 

@@ -14,6 +14,8 @@ import math
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 
+pi = 3.14
+
 class ConeDetectionNode(Node):
     def __init__(self):
         super().__init__('cone_detection')
@@ -65,14 +67,14 @@ class ConeDetectionNode(Node):
             # '/zed/zed_node/depth/depth_registered',
             # '/zed/zed_node/depth/camera_info',
             '/depth_camera1/camera_info',
-            self.caminfo_callback,
+            lambda msg: self.caminfo_callback(msg, camera_name = "camera1"),
             10)
         
         self.subscription_camera1_depth = self.create_subscription(
             Image,
             # '/zed/zed_node/depth/depth_registered',
             '/depth_camera1/depth/image_raw',
-            self.depth_callback,
+            lambda msg: self.depth_callback(msg, camera_name = "camera1"),
             10)
         
         
@@ -89,14 +91,14 @@ class ConeDetectionNode(Node):
             # '/zed/zed_node/depth/depth_registered',
             # '/zed/zed_node/depth/camera_info',
             '/depth_short_1_camera/camera_info',
-            self.caminfo_callback,
+            lambda msg: self.caminfo_callback(msg, camera_name = "camera2"),
             10)
         
         self.subscription_camera1_depth = self.create_subscription(
             Image,
             # '/zed/zed_node/depth/depth_registered',
             '/depth_short_1_camera/depth/image_raw',
-            self.depth_callback,
+            lambda msg: self.depth_callback(msg, camera_name = "camera2"),
             10)
         
         self.subscription_camera1 = self.create_subscription(
@@ -113,8 +115,13 @@ class ConeDetectionNode(Node):
             10)
             
         self.detect_pub = self.create_publisher(Pose, 'destination_pose',10)
-        self.caminfo = None
-        self.depth_img = None
+        
+        self.caminfo1 = None
+        self.depth_img1 = None
+
+        self.caminfo2 = None
+        self.depth_img2 = None
+
         self.bridge = CvBridge()
         
     def odom_callback(self, msg):
@@ -123,11 +130,17 @@ class ConeDetectionNode(Node):
         self.z_pos = msg.pose.pose.position.z
         self.orientation = msg.pose.pose.orientation.z
         
-    def depth_callback(self, msg):
-        self.depth_img = self.bridge.imgmsg_to_cv2(msg)
+    def depth_callback(self, msg, camera_name):
+        if camera_name == "camera1":
+            self.depth_img1 = self.bridge.imgmsg_to_cv2(msg)
+        else:
+            self.depth_img2 = self.bridge.imgmsg_to_cv2(msg)
         
-    def caminfo_callback(self, msg):
-        self.caminfo = msg
+    def caminfo_callback(self, msg, camera_name):
+        if camera_name == "camera1":
+            self.caminfo1 = msg
+        else:
+            self.caminfo2 = msg
 
     def publish_coordinates(self, camera_name):
         l = list(self.new_centroids.keys())
@@ -135,9 +148,53 @@ class ConeDetectionNode(Node):
             return
         
         l.sort()
+
+        # camera1_transform = [[math.cos(), -math.sin()]
+        #                      [math.sin(), math.cos()]]
+
+        rx = np.asarray(
+            [[1, 0, 0],
+            [0, np.cos(pi/4), -np.sin(pi/4)],
+            [0, np.sin(pi/4), np.cos(pi/4)]]
+        )
         
-        # print(self.new_centroids)
-        # print(l)
+        ry = np.asarray(
+            [[np.cos(pi/3), 0 ,np.sin(pi/3)],
+            [0, 1, 0],
+            [-np.sin(pi/3), 0, np.cos(pi/3)]]
+        )
+
+        rz = np.asarray(
+            [[np.cos(pi/2), -np.sin(pi/2), 0],
+            [np.sin(pi/2), np.cos(pi/2), 0],
+            [0, 0, 1]]
+        )
+
+        print(rx)
+
+        temp = (self.new_centroids[l[-1]][0], self.new_centroids[l[-1]][1], self.new_centroids[l[-1]][2])
+        temp2 = (self.new_centroids[l[-2]][0], self.new_centroids[l[-2]][1], self.new_centroids[l[-2]][2])
+
+        for i in [-1, -2]:
+            
+            magnitude = math.sqrt(self.new_centroids[l[i]][0]**2 + self.new_centroids[l[i]][1]**2)
+            angle = math.atan(self.new_centroids[l[i]][0]/self.new_centroids[l[i]][1])
+            
+            if self.new_centroids[l[i]][-1] == "camera1":
+                if(self.orientation>=0 and self.orientation <=3.1416):
+                    self.new_centroids[l[i]][0] = self.x_pos + magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
+                    self.new_centroids[l[i]][1] = self.y_pos + magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
+                else:
+                    self.new_centroids[l[i]][0] = self.x_pos + magnitude*math.cos(-self.orientation + (self.camera1_orientation+angle))
+                    self.new_centroids[l[i]][1] = self.y_pos + magnitude*math.sin(-self.orientation + (self.camera1_orientation+angle))
+            
+            elif self.new_centroids[l[i]][-1] == "camera2":
+                if(self.orientation>=0 and self.orientation <=3.1416):
+                    self.new_centroids[l[i]][0] = self.x_pos + magnitude*math.cos(-self.orientation + (self.camera2_orientation+angle))
+                    self.new_centroids[l[i]][1] = self.y_pos + magnitude*math.sin(-self.orientation + (self.camera2_orientation+angle))
+                else:
+                    self.new_centroids[l[i]][0] = self.x_pos + magnitude*math.cos(self.orientation + (self.camera2_orientation+angle))
+                    self.new_centroids[l[i]][1] = self.y_pos + magnitude*math.sin(self.orientation + (self.camera2_orientation+angle)) 
 
         centroids = [self.new_centroids[l[-1]], self.new_centroids[l[-2]]]
         mean_centroid = (0.50*(centroids[0][0]+centroids[1][0]), 0.50*(centroids[0][1]+centroids[1][1]))
@@ -145,26 +202,24 @@ class ConeDetectionNode(Node):
         #self.publish_trajectory(mean_centroid,centroids)
 
         msg = Pose()
-        magnitude = math.sqrt(mean_centroid[0]**2 + mean_centroid[1]**2)
-        angle = math.atan(mean_centroid[0]/mean_centroid[1])
+        msg.position.x = mean_centroid[0]
+        msg.position.y = mean_centroid[1]
 
-        print(magnitude)
-
-        if camera_name == "camera1":
-            if(self.orientation>=0 and self.orientation <=3.1416):
-                msg.position.x = self.x_pos #+ magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
-                msg.position.y = self.y_pos #+ magnitude*math.sin(self.orientation + (self.camera1_orientation+angle)) 
-            else:
-                msg.position.x = self.x_pos #+ magnitude*math.cos(-self.orientation + (self.camera1_orientation+angle))
-                msg.position.y = self.y_pos #+ magnitude*math.sin(-self.orientation + (self.camera1_orientation+angle))
+        # if camera_name == "camera1":
+        #     if(self.orientation>=0 and self.orientation <=3.1416):
+        #         msg.position.x = self.x_pos #+ magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
+        #         msg.position.y = self.y_pos #+ magnitude*math.sin(self.orientation + (self.camera1_orientation+angle)) 
+        #     else:
+        #         msg.position.x = self.x_pos #+ magnitude*math.cos(-self.orientation + (self.camera1_orientation+angle))
+        #         msg.position.y = self.y_pos #+ magnitude*math.sin(-self.orientation + (self.camera1_orientation+angle))
         
-        if camera_name == "camera2":
-            if(self.orientation>=0 and self.orientation <=3.1416):
-                msg.position.x = self.x_pos #+ magnitude*math.cos(-self.orientation + (self.camera1_orientation+angle))
-                msg.position.y = self.y_pos #+ magnitude*math.sin(-self.orientation + (self.camera1_orientation+angle))
-            else:
-                msg.position.x = self.x_pos #+ magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
-                msg.position.y = self.y_pos #+ magnitude*math.sin(self.orientation + (self.camera1_orientation+angle)) 
+        # if camera_name == "camera2":
+        #     if(self.orientation>=0 and self.orientation <=3.1416):
+        #         msg.position.x = self.x_pos #+ magnitude*math.cos(-self.orientation + (self.camera1_orientation+angle))
+        #         msg.position.y = self.y_pos #+ magnitude*math.sin(-self.orientation + (self.camera1_orientation+angle))
+        #     else:
+        #         msg.position.x = self.x_pos #+ magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
+        #         msg.position.y = self.y_pos #+ magnitude*math.sin(self.orientation + (self.camera1_orientation+angle)) 
 
         msg.position.z = 0.0
         msg.orientation.x = 0.0
@@ -173,7 +228,8 @@ class ConeDetectionNode(Node):
         msg.orientation.w = 1.0
 
         self.detect_pub.publish(msg)
-        self.get_logger().info(f'Publishing: Position=({msg.position.x}, {msg.position.y}')
+        self.get_logger().info(f'Publishing: Position=({temp[0]}, {temp[1]}, {temp[2]}), {rx}')
+        self.get_logger().info(f'Publishing: Position=({temp2[0]}, {temp2[1]}, {temp2[2]}), {rx}')
         
         return
 
@@ -195,17 +251,29 @@ class ConeDetectionNode(Node):
         # img_rgb = rgb
 
         cl_box = []
-        camera_factor = self.caminfo.k[-1]
-        camera_cx = self.caminfo.k[2]
-        camera_cy = self.caminfo.k[5]
-        camera_fx = self.caminfo.k[0]
-        camera_fy = self.caminfo.k[4]
 
         if camera_name == "camera1":
             self.new_centroids = {}
             self.dual_camera = False
+
+            camera_factor = self.caminfo1.k[-1]
+            camera_cx = self.caminfo1.k[2]
+            camera_cy = self.caminfo1.k[5]
+            camera_fx = self.caminfo1.k[0]
+            camera_fy = self.caminfo1.k[4]
+
+            depth_image = self.depth_img1
+        
         else:
             self.dual_camera = True
+
+            camera_factor = self.caminfo2.k[-1]
+            camera_cx = self.caminfo2.k[2]
+            camera_cy = self.caminfo2.k[5]
+            camera_fx = self.caminfo2.k[0]
+            camera_fy = self.caminfo2.k[4]
+
+            depth_image = self.depth_img2
         
         for r in results:
             boxes = r.boxes
@@ -222,10 +290,15 @@ class ConeDetectionNode(Node):
                     continue
                     
                 cv.rectangle(rgb, (x1, y1), (x2, y2), (255, 0, 255), 3)
+
                 u = int((x1+x2)/2)
                 v = int((y1+y2)/2)
                                 
-                z = self.depth_img[v][u] / camera_factor
+                # z = depth_image[v][u] / camera_factor
+                # x = (u - camera_cx) * z / camera_fx
+                # y = (v - camera_cy) * z / camera_fy
+
+                z = depth_image[v][u]
                 x = (u - camera_cx) * z / camera_fx
                 y = (v - camera_cy) * z / camera_fy
 
@@ -254,7 +327,7 @@ class ConeDetectionNode(Node):
                     
                     for i in coordinates:
                         confidence, x, z = i[0], i[1], i[3]
-                        self.new_centroids[confidence] = [i[1], i[3]]
+                        self.new_centroids[confidence] = [i[1], i[3], camera_name]
 
         self.publish_coordinates(camera_name)
 
@@ -273,13 +346,23 @@ class ConeDetectionNode(Node):
         except CvBridgeError as e:
             self.get_logger().error(str(e))
             return
-        if self.depth_img is not None and self.caminfo is not None:
-            final = self.cone_detection(cv_image, camera_name = camera_name)
+        
+        if camera_name == "camera1":
+            if self.depth_img1 is not None and self.caminfo1 is not None:
+                final = self.cone_detection(cv_image, camera_name = camera_name)
 
-            try:
-                self.publisher_.publish(self.bridge.cv2_to_imgmsg(final))
-            except CvBridgeError as e:
-                self.get_logger().error(str(e))
+                try:
+                    self.publisher_.publish(self.bridge.cv2_to_imgmsg(final))
+                except CvBridgeError as e:
+                    self.get_logger().error(str(e))
+        else:
+            if self.depth_img2 is not None and self.caminfo2 is not None:
+                final = self.cone_detection(cv_image, camera_name = camera_name)
+
+                try:
+                    self.publisher_.publish(self.bridge.cv2_to_imgmsg(final))
+                except CvBridgeError as e:
+                    self.get_logger().error(str(e))
 
 def main(args=None):
     rclpy.init(args=args)

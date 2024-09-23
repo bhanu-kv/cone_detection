@@ -13,6 +13,40 @@ from ultralytics import YOLO
 import math
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
+from tf_transformations import euler_from_quaternion
+
+pi = 3.14
+rot_angle = 0.872665
+tilt_angle = 0.296706
+camera_common_radius = 0.03
+camera_subtended_angle = 1.57
+caster_pos_y = 0.45
+
+def cal_rel_cam(v, tilt_angle, rot_angle):
+    rx = np.asarray(
+            [[1, 0, 0],
+            [0, np.cos(0), -np.sin(0)],
+            [0, np.sin(0), np.cos(0)]]
+        )
+        
+    ry = np.asarray(
+        [[np.cos(tilt_angle), 0 ,np.sin(tilt_angle)],
+        [0, 1, 0],
+        [-np.sin(tilt_angle), 0, np.cos(tilt_angle)]]
+    )
+
+    rz = np.asarray(
+        [[np.cos(rot_angle), -np.sin(rot_angle), 0],
+        [np.sin(rot_angle), np.cos(rot_angle), 0],
+        [0, 0, 1]]
+    )
+    
+    y, z, x = v[0], v[1], v[2]
+    v = np.dot(rx, np.array([x, y, z]))
+    v = np.dot(ry, v)
+    v = np.dot(rz, v)
+
+    return v
 
 class ConeDetectionNode(Node):
     def __init__(self):
@@ -27,8 +61,6 @@ class ConeDetectionNode(Node):
         self.new_centroids = {}
        
         self.model = YOLO("/home/bhanu/abhiyaan/cone_detection/src/cone_detection/best.pt")
-
-        # self.classNames = ["Barrel", "No-Turns", "One-Way", "Person", "Road-Closed", "Stop-Sign", "Tire"]
         self.classNames = ["cone"]
         
         self.subscription_odom = self.create_subscription(
@@ -36,29 +68,6 @@ class ConeDetectionNode(Node):
             '/odom',
             self.odom_callback,
             10)
-        
-        # self.subscription_rgb = self.create_subscription(
-        #     Image,
-        #     # '/zed/zed_node/depth/depth_registered',
-        #     # '/zed/zed_node/rgb/image_rect_color',
-        #     '/camera/image_raw',
-        #     self.image_callback,
-        #     10)
-            
-        # self.subscription_caminfo = self.create_subscription(
-        #     CameraInfo,
-        #     # '/zed/zed_node/depth/depth_registered',
-        #     # '/zed/zed_node/depth/camera_info',
-        #     '/depth_camera/camera_info',
-        #     self.caminfo_callback,
-        #     10)
-            
-        # self.subscription_depth = self.create_subscription(
-        #     Image,
-        #     # '/zed/zed_node/depth/depth_registered',
-        #     '/depth_camera/depth/image_raw',
-        #     self.depth_callback,
-        #     10)
 
         self.subscription_cam1info = self.create_subscription(
             CameraInfo,
@@ -126,7 +135,11 @@ class ConeDetectionNode(Node):
         self.x_pos = msg.pose.pose.position.x
         self.y_pos = msg.pose.pose.position.y
         self.z_pos = msg.pose.pose.position.z
-        self.orientation = msg.pose.pose.orientation.z
+        orientation = msg.pose.pose.orientation
+
+        orientation_list = [orientation.x, orientation.y, orientation.z, orientation.w]
+        (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
+        self.orientation = yaw
         
     def depth_callback(self, msg, camera_name):
         if camera_name == "camera1":
@@ -146,30 +159,51 @@ class ConeDetectionNode(Node):
             return
         
         l.sort()
+        
+        v = []
 
-        temp = (self.new_centroids[l[-1]][0], self.new_centroids[l[-1]][1])
-        temp2 = (self.new_centroids[l[-2]][0], self.new_centroids[l[-2]][1])
+        for i in range(1,3):
+            if self.new_centroids[l[-i]][-1] == "camera1":
+                v1 = [-1*self.new_centroids[l[-i]][0], -1*self.new_centroids[l[-i]][1], self.new_centroids[l[-i]][2]]
+                v.append([cal_rel_cam(v=v1, tilt_angle=tilt_angle, rot_angle=rot_angle), "camera1"])
+            else:
+                v2 = [-1*self.new_centroids[l[-i]][0], -1*self.new_centroids[l[-i]][1], self.new_centroids[l[-i]][2]]
+                v.append([cal_rel_cam(v=v2, tilt_angle=tilt_angle, rot_angle=-1*rot_angle), "camera2"])
+
+        new_v = [[0, 0],
+                 [0, 0]]
 
         for i in [-1, -2]:
+            x, y = v[i][0][0], v[i][0][1]
+
+            # magnitude = math.sqrt(x**2 + y**2)
+            # angle = math.atan(y/x)
+
+            if v[i][-1] == "camera1":
+                x += camera_common_radius*math.sin(camera_subtended_angle/2)
+                y += -caster_pos_y/2 + camera_common_radius*math.cos(camera_subtended_angle/2)
+            else:
+                x += -camera_common_radius*math.sin(camera_subtended_angle/2)
+                y += -caster_pos_y/2 + camera_common_radius*math.cos(camera_subtended_angle/2)
             
-            magnitude = math.sqrt(self.new_centroids[l[i]][0]**2 + self.new_centroids[l[i]][1]**2)
-            angle = math.atan(self.new_centroids[l[i]][0]/self.new_centroids[l[i]][1])
+            new_v[i][0] = self.x_pos + x*math.cos(self.orientation) - y*math.sin(self.orientation)
+            new_v[i][1] = self.y_pos + x*math.sin(self.orientation) + y*math.cos(self.orientation)
             
-            if self.new_centroids[l[i]][-1] == "camera1":
-                if(self.orientation>=0 and self.orientation <=3.1416):
-                    self.new_centroids[l[i]][0] = self.x_pos + magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
-                    self.new_centroids[l[i]][1] = self.y_pos + magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
-                else:
-                    self.new_centroids[l[i]][0] = self.x_pos + magnitude*math.cos(-self.orientation + (self.camera1_orientation+angle))
-                    self.new_centroids[l[i]][1] = self.y_pos + magnitude*math.sin(-self.orientation + (self.camera1_orientation+angle))
+            # if v[i][-1] == "camera1":
+            #     if(self.orientation>=0 and self.orientation <=3.1416):
+            #         new_v[i][0] = self.x_pos + magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
+            #         new_v[i][1] = self.y_pos + magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
+            #     else:
+            #         new_v[i][0] = self.x_pos + magnitude*math.cos(-self.orientation + (self.camera1_orientation+angle))
+            #         new_v[i][1] = self.y_pos + magnitude*math.sin(-self.orientation + (self.camera1_orientation+angle))
             
-            elif self.new_centroids[l[i]][-1] == "camera2":
-                if(self.orientation>=0 and self.orientation <=3.1416):
-                    self.new_centroids[l[i]][0] = self.x_pos + magnitude*math.cos(-self.orientation + (self.camera2_orientation+angle))
-                    self.new_centroids[l[i]][1] = self.y_pos + magnitude*math.sin(-self.orientation + (self.camera2_orientation+angle))
-                else:
-                    self.new_centroids[l[i]][0] = self.x_pos + magnitude*math.cos(self.orientation + (self.camera2_orientation+angle))
-                    self.new_centroids[l[i]][1] = self.y_pos + magnitude*math.sin(self.orientation + (self.camera2_orientation+angle)) 
+            # elif v[i][-1] == "camera2":
+            #     if(self.orientation>=0 and self.orientation <=3.1416):
+            #         new_v[i][0] = self.x_pos + magnitude*math.cos(-self.orientation + (self.camera2_orientation+angle))
+            #         new_v[i][1] = self.y_pos + magnitude*math.sin(-self.orientation + (self.camera2_orientation+angle))
+            #     else:
+            #         new_v[i][0] = self.x_pos + magnitude*math.cos(self.orientation + (self.camera2_orientation+angle))
+            #         new_v[i][1] = self.y_pos + magnitude*math.sin(self.orientation + (self.camera2_orientation+angle)) 
 
         centroids = [self.new_centroids[l[-1]], self.new_centroids[l[-2]]]
         mean_centroid = (0.50*(centroids[0][0]+centroids[1][0]), 0.50*(centroids[0][1]+centroids[1][1]))
@@ -180,22 +214,6 @@ class ConeDetectionNode(Node):
         msg.position.x = mean_centroid[0]
         msg.position.y = mean_centroid[1]
 
-        # if camera_name == "camera1":
-        #     if(self.orientation>=0 and self.orientation <=3.1416):
-        #         msg.position.x = self.x_pos #+ magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
-        #         msg.position.y = self.y_pos #+ magnitude*math.sin(self.orientation + (self.camera1_orientation+angle)) 
-        #     else:
-        #         msg.position.x = self.x_pos #+ magnitude*math.cos(-self.orientation + (self.camera1_orientation+angle))
-        #         msg.position.y = self.y_pos #+ magnitude*math.sin(-self.orientation + (self.camera1_orientation+angle))
-        
-        # if camera_name == "camera2":
-        #     if(self.orientation>=0 and self.orientation <=3.1416):
-        #         msg.position.x = self.x_pos #+ magnitude*math.cos(-self.orientation + (self.camera1_orientation+angle))
-        #         msg.position.y = self.y_pos #+ magnitude*math.sin(-self.orientation + (self.camera1_orientation+angle))
-        #     else:
-        #         msg.position.x = self.x_pos #+ magnitude*math.cos(self.orientation + (self.camera1_orientation+angle))
-        #         msg.position.y = self.y_pos #+ magnitude*math.sin(self.orientation + (self.camera1_orientation+angle)) 
-
         msg.position.z = 0.0
         msg.orientation.x = 0.0
         msg.orientation.y = 0.0
@@ -203,8 +221,8 @@ class ConeDetectionNode(Node):
         msg.orientation.w = 1.0
 
         self.detect_pub.publish(msg)
-        self.get_logger().info(f'Publishing: Position=({temp[0]}, {temp[1]}')
-        self.get_logger().info(f'Publishing: Position=({temp2[0]}, {temp2[1]}')
+        self.get_logger().info(f'Publishing: Position=({new_v})') 
+        # self.get_logger().info(f'Publishing: Position=(v2: {v2})')
         
         return
 
@@ -218,12 +236,8 @@ class ConeDetectionNode(Node):
 
     def cone_detection(self, rgb, camera_name):
         # Add parameter settings or modifications as needed
-        # rgb = cv.flip(rgb, 0)
         
         results = self.model(rgb, verbose = False)
-        # img_rgb = cv.cvtColor(rgb, cv.COLOR_BGR2RGB)
-        # img_rgb = cv.resize(rgb, (200, 200))
-        # img_rgb = rgb
 
         cl_box = []
 
@@ -268,7 +282,7 @@ class ConeDetectionNode(Node):
 
                 u = int((x1+x2)/2)
                 v = int((y1+y2)/2)
-                                
+
                 z = depth_image[v][u] / camera_factor
                 x = (u - camera_cx) * z / camera_fx
                 y = (v - camera_cy) * z / camera_fy
@@ -297,8 +311,8 @@ class ConeDetectionNode(Node):
                         continue
                     
                     for i in coordinates:
-                        confidence, x, z = i[0], i[1], i[3]
-                        self.new_centroids[confidence] = [i[1], i[3], camera_name]
+                        confidence, x, y, z = i[0], i[1], i[2], i[3]
+                        self.new_centroids[confidence] = [i[1], i[2], i[3], camera_name]
 
         self.publish_coordinates(camera_name)
 
