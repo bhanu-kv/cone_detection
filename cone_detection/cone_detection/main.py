@@ -21,6 +21,7 @@ tilt_angle = 0.296706
 camera_common_radius = 0.03
 camera_subtended_angle = 1.57
 caster_pos_y = 0.45
+cone_radius = 0.2
 
 def cal_rel_cam(v, tilt_angle, rot_angle):
     rx = np.asarray(
@@ -55,8 +56,8 @@ class ConeDetectionNode(Node):
         self.camera1_orientation = -2.355
         self.camera2_orientation = -0.785
 
-        self.rgb_camera1 = None
-        self.rgb_camera2 = None
+        self.rgb_camera1 = np.empty( shape=(0, 0) )
+        self.rgb_camera2 = np.empty( shape=(0, 0) )
 
         self.new_centroids = {}
        
@@ -121,7 +122,9 @@ class ConeDetectionNode(Node):
             '/cones',
             10)
             
-        self.detect_pub = self.create_publisher(Pose, 'destination_pose',10)
+        # self.detect_pub = self.create_publisher(Pose, 'destination_pose',10)
+        self.detec_cone1_pub = self.create_publisher(Pose, 'cone1_pose',10)
+        self.detec_cone2_pub = self.create_publisher(Pose, 'cone2_pose',10)
         
         self.caminfo1 = None
         self.depth_img1 = None
@@ -186,25 +189,63 @@ class ConeDetectionNode(Node):
             new_v[i][0] = self.x_pos + x*math.cos(self.orientation) - y*math.sin(self.orientation)
             new_v[i][1] = self.y_pos + x*math.sin(self.orientation) + y*math.cos(self.orientation)
 
-        mean_centroid = (0.50*(new_v[0][0]+new_v[1][0]), 0.50*(new_v[0][1]+new_v[1][1]))
-        self.get_logger().info(f"Mean Centroid: {mean_centroid}")
 
-        msg = Pose()
-        msg.position.x = mean_centroid[0]
-        msg.position.y = mean_centroid[1]
+            
+            #Code when we need to publish position of 2 cones on different topics 
+            
+            d = math.sqrt(np.square(new_v[i][0]-self.x_pos) + np.square(new_v[i][1]-self.y_pos))
+            t = (d+cone_radius)/d
 
-        msg.position.z = 0.0
-        msg.orientation.x = 0.0
-        msg.orientation.y = 0.0
-        msg.orientation.z = 0.0
-        msg.orientation.w = 1.0
+            new_v[i][0] = (1 - t) * self.x_pos + t * new_v[i][0]
+            new_v[i][1] = (1 - t) * self.y_pos + t * new_v[i][1]
 
-        self.detect_pub.publish(msg)
+            msg = Pose()
+            msg.position.x = new_v[i][0]
+            msg.position.y = new_v[i][1]
+
+            msg.position.z = 0.0
+            msg.orientation.x = 0.0
+            msg.orientation.y = 0.0
+            msg.orientation.z = 0.0
+            msg.orientation.w = 1.0
+
+            if v[i][-1] == "camera1":
+                self.detec_cone1_pub.publish(msg)
+            else:
+                self.detec_cone2_pub.publish(msg)
+            
+            # ---------------------------------------------------------------------------------------
+
+        
+        # Code when we need to publish position of mean of cones
+        
+        # mean_centroid = (0.50*(new_v[0][0]+new_v[1][0]), 0.50*(new_v[0][1]+new_v[1][1]))
+
+        # d = math.sqrt(np.square(mean_centroid[0]-self.x_pos) + np.square(mean_centroid[1]-self.y_pos))
+        # t = (d+cone_radius)/d
+
+        # mean_centroid[0] = (1 - t) * self.x_pos + t * mean_centroid[0]
+        # mean_centroid[1] = (1 - t) * self.y_pos + t * mean_centroid[1]
+
+        # self.get_logger().info(f"Mean Centroid: {mean_centroid}")
+
+        # msg = Pose()
+        # msg.position.x = mean_centroid[0]
+        # msg.position.y = mean_centroid[1]
+
+        # msg.position.z = 0.0
+        # msg.orientation.x = 0.0
+        # msg.orientation.y = 0.0
+        # msg.orientation.z = 0.0
+        # msg.orientation.w = 1.0
+
+        # self.detect_pub.publish(msg)
+        # -------------------------------------------------------------------------------------------------
         
         return
 
     def display_image(self):
-        if(self.dual_camera == True):
+        if(self.dual_camera == True and self.rgb_camera1.shape != 0 and self.rgb_camera2.shape != 0):
             height, width, channels = self.rgb_camera1.shape
 
             # Define the thickness of the vertical black line
