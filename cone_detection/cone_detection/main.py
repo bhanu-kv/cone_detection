@@ -188,8 +188,6 @@ class ConeDetectionNode(Node):
             
             new_v[i][0] = self.x_pos + x*math.cos(self.orientation) - y*math.sin(self.orientation)
             new_v[i][1] = self.y_pos + x*math.sin(self.orientation) + y*math.cos(self.orientation)
-
-
             
             #Code when we need to publish position of 2 cones on different topics 
             
@@ -199,23 +197,30 @@ class ConeDetectionNode(Node):
             new_v[i][0] = (1 - t) * self.x_pos + t * new_v[i][0]
             new_v[i][1] = (1 - t) * self.y_pos + t * new_v[i][1]
 
-            msg = Pose()
-            msg.position.x = new_v[i][0]
-            msg.position.y = new_v[i][1]
+        msg1 = Pose()
+        msg1.position.x = new_v[0][0]
+        msg1.position.y = new_v[0][1]
 
-            msg.position.z = 0.0
-            msg.orientation.x = 0.0
-            msg.orientation.y = 0.0
-            msg.orientation.z = 0.0
-            msg.orientation.w = 1.0
+        msg1.position.z = 0.0
+        msg1.orientation.x = 0.0
+        msg1.orientation.y = 0.0
+        msg1.orientation.z = 0.0
+        msg1.orientation.w = 1.0
 
-            if v[i][-1] == "camera1":
-                self.detec_cone1_pub.publish(msg)
-            else:
-                self.detec_cone2_pub.publish(msg)
+        msg2 = Pose()
+        msg2.position.x = new_v[1][0]
+        msg2.position.y = new_v[1][1]
+
+        msg2.position.z = 0.0
+        msg2.orientation.x = 0.0
+        msg2.orientation.y = 0.0
+        msg2.orientation.z = 0.0
+        msg2.orientation.w = 1.0
+
+        self.detec_cone1_pub.publish(msg1)
+        self.detec_cone2_pub.publish(msg2)
             
-            # ---------------------------------------------------------------------------------------
-
+        # ---------------------------------------------------------------------------------------
         
         # Code when we need to publish position of mean of cones
         
@@ -245,7 +250,7 @@ class ConeDetectionNode(Node):
         return
 
     def display_image(self):
-        if(self.dual_camera == True and self.rgb_camera1.shape != 0 and self.rgb_camera2.shape != 0):
+        if(self.dual_camera == True and self.rgb_camera1.shape[-1] == 3 and self.rgb_camera2.shape[-1] == 3):
             height, width, channels = self.rgb_camera1.shape
 
             # Define the thickness of the vertical black line
