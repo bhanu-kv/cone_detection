@@ -123,8 +123,7 @@ class ConeDetectionNode(Node):
             10)
             
         # self.detect_pub = self.create_publisher(Pose, 'destination_pose',10)
-        self.detec_cone1_pub = self.create_publisher(Pose, 'cone1_pose', 10)
-        self.detec_cone2_pub = self.create_publisher(Pose, 'cone2_pose', 10)
+        self.detect_pub = self.create_publisher(Pose, 'destination_pose',10)
         
         self.caminfo1 = None
         self.depth_img1 = None
