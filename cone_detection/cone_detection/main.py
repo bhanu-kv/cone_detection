@@ -15,12 +15,12 @@ from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from tf_transformations import euler_from_quaternion
 
-pi = 3.14
+pi = 3.14159265359
 tilt_angle = 0.296706
 camera_common_radius = 0.03
 camera_subtended_angle = 1.91986
 caster_pos_y = 0.45
-cone_radius = 0.1
+cone_radius = 0.15
 rot_angle = -1*(-pi/2 + camera_subtended_angle/2)
 
 def cal_rel_cam(v, tilt_angle, rot_angle):
@@ -43,9 +43,9 @@ def cal_rel_cam(v, tilt_angle, rot_angle):
     )
     
     y, z, x = v[0], v[1], v[2]
-    v = np.dot(rx, np.array([x, y, z]))
+    v = np.dot(rz, np.array([x, y, z]))
     v = np.dot(ry, v)
-    v = np.dot(rz, v)
+    v = np.dot(rx, v)
 
     return v
 
@@ -53,23 +53,30 @@ class ConeDetectionNode(Node):
     def __init__(self):
         super().__init__('cone_detection')
 
-        self.camera1_orientation = -rot_angle-pi/2
-        self.camera2_orientation = -rot_angle
+        # Orientation of both cameras
+        self.camera1_orientation = rot_angle
+        self.camera2_orientation = -1*rot_angle
 
+        # Initializing Empty arrays for images
         self.rgb_camera1 = np.empty( shape=(0, 0) )
         self.rgb_camera2 = np.empty( shape=(0, 0) )
 
         self.new_centroids = {}
        
+        # Yolo Model to Detect Cones
         self.model = YOLO("/home/bhanu/abhiyaan/cone_detection/src/cone_detection/best.pt")
         self.classNames = ["cone"]
         
+        # Declaring publishers and Subscribers
+
+        # Odom Subscription
         self.subscription_odom = self.create_subscription(
             Odometry,
             '/odom',
             self.odom_callback,
             10)
 
+        # Camera 1 caminfo
         self.subscription_cam1info = self.create_subscription(
             CameraInfo,
             # '/zed/zed_node/depth/depth_registered',
@@ -78,6 +85,7 @@ class ConeDetectionNode(Node):
             lambda msg: self.caminfo_callback(msg, camera_name = "camera1"),
             10)
         
+        # Camera 1 Depth Image
         self.subscription_camera1_depth = self.create_subscription(
             Image,
             # '/zed/zed_node/depth/depth_registered',
@@ -85,7 +93,7 @@ class ConeDetectionNode(Node):
             lambda msg: self.depth_callback(msg, camera_name = "camera1"),
             10)
         
-        
+        # Camera 1 rgb image
         self.subscription_camera1 = self.create_subscription(
             Image,
             # '/zed/zed_node/depth/depth_registered',
@@ -94,7 +102,8 @@ class ConeDetectionNode(Node):
             lambda msg: self.image_callback(msg, camera_name = "camera1"),
             10)
         
-        self.subscription_cam1info = self.create_subscription(
+        # Camera 2 caminfo
+        self.subscription_cam2info = self.create_subscription(
             CameraInfo,
             # '/zed/zed_node/depth/depth_registered',
             # '/zed/zed_node/depth/camera_info',
@@ -102,14 +111,16 @@ class ConeDetectionNode(Node):
             lambda msg: self.caminfo_callback(msg, camera_name = "camera2"),
             10)
         
-        self.subscription_camera1_depth = self.create_subscription(
+        # Camera 2 depth image
+        self.subscription_camera2_depth = self.create_subscription(
             Image,
             # '/zed/zed_node/depth/depth_registered',
             '/depth_short_1_camera/depth/image_raw',
             lambda msg: self.depth_callback(msg, camera_name = "camera2"),
             10)
-        
-        self.subscription_camera1 = self.create_subscription(
+
+        # Camera 2 tgb image        
+        self.subscription_camera2 = self.create_subscription(
             Image,
             # '/zed/zed_node/depth/depth_registered',
             # '/zed/zed_node/rgb/image_rect_color',
@@ -117,14 +128,20 @@ class ConeDetectionNode(Node):
             lambda msg: self.image_callback(msg, camera_name = "camera2"),
             10)
 
+        # Image publisher (for GUI)
         self.publisher_ = self.create_publisher(
             Image,
             '/cones',
             10)
-            
-        # self.detect_pub = self.create_publisher(Pose, 'destination_pose',10)
-        self.detect_pub = self.create_publisher(Pose, 'destination_pose',10)
         
+        # Publish to parallel park code for cone coordinates
+        # self.detect_pub = self.create_publisher(Pose, 'destination_pose', 10) # When publishing centroid
+
+        # When publishing for each cone
+        self.detec_cone1_pub = self.create_publisher(Pose, 'cone1_pose', 10)
+        self.detec_cone2_pub = self.create_publisher(Pose, 'cone2_pose', 10)
+        
+        # Declaring parameters to avoid errors
         self.caminfo1 = None
         self.depth_img1 = None
 
@@ -132,7 +149,8 @@ class ConeDetectionNode(Node):
         self.depth_img2 = None
 
         self.bridge = CvBridge()
-        
+    
+    # Odom callback for odometry
     def odom_callback(self, msg):
         self.x_pos = msg.pose.pose.position.x
         self.y_pos = msg.pose.pose.position.y
@@ -140,6 +158,8 @@ class ConeDetectionNode(Node):
         orientation = msg.pose.pose.orientation
 
         orientation_list = [orientation.x, orientation.y, orientation.z, orientation.w]
+
+        # Covert quaternions to Euler angles
         (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
         self.orientation = yaw
         
@@ -167,10 +187,10 @@ class ConeDetectionNode(Node):
         for i in range(1,3):
             if self.new_centroids[l[-i]][-1] == "camera1":
                 v1 = [-1*self.new_centroids[l[-i]][0], -1*self.new_centroids[l[-i]][1], self.new_centroids[l[-i]][2]]
-                v.append([cal_rel_cam(v=v1, tilt_angle=tilt_angle, rot_angle=rot_angle), "camera1"])
+                v.append([cal_rel_cam(v=v1, tilt_angle=tilt_angle, rot_angle=self.camera1_orientation), "camera1"])
             else:
                 v2 = [-1*self.new_centroids[l[-i]][0], -1*self.new_centroids[l[-i]][1], self.new_centroids[l[-i]][2]]
-                v.append([cal_rel_cam(v=v2, tilt_angle=tilt_angle, rot_angle=-1*rot_angle), "camera2"])
+                v.append([cal_rel_cam(v=v2, tilt_angle=tilt_angle, rot_angle=self.camera2_orientation), "camera2"])
 
         new_v = [[0, 0],
                  [0, 0]]
@@ -180,21 +200,25 @@ class ConeDetectionNode(Node):
 
             if v[i][-1] == "camera1":
                 x += camera_common_radius*math.sin(camera_subtended_angle/2)
-                y += -caster_pos_y/2 + camera_common_radius*math.cos(camera_subtended_angle/2)
+                y += camera_common_radius*math.cos(camera_subtended_angle/2) - caster_pos_y/2
             else:
                 x += -camera_common_radius*math.sin(camera_subtended_angle/2)
-                y += -caster_pos_y/2 + camera_common_radius*math.cos(camera_subtended_angle/2)
+                y += camera_common_radius*math.cos(camera_subtended_angle/2) - caster_pos_y/2
             
-            new_v[i][0] = self.x_pos + x*math.cos(self.orientation) - y*math.sin(self.orientation)
-            new_v[i][1] = self.y_pos + x*math.sin(self.orientation) + y*math.cos(self.orientation)
-            
-            #Code when we need to publish position of 2 cones on different topics 
-            
-            d = math.sqrt(np.square(new_v[i][0]-self.x_pos) + np.square(new_v[i][1]-self.y_pos))
-            t = (d+cone_radius)/d
+            # new_v[i][0] = self.x_pos + x*math.cos(self.orientation) - y*math.sin(self.orientation)
+            # new_v[i][1] = self.y_pos + x*math.sin(self.orientation) + y*math.cos(self.orientation)
 
-            new_v[i][0] = (1 - t) * self.x_pos + t * new_v[i][0]
-            new_v[i][1] = (1 - t) * self.y_pos + t * new_v[i][1]
+            new_v[i][0] = x*math.cos(self.orientation) - y*math.sin(self.orientation)
+            new_v[i][1] = x*math.sin(self.orientation) + y*math.cos(self.orientation)
+            
+            ## ---------------------------------------------------------------------------------------------------
+            ##Code when we need to publish position of 2 cones on different topics 
+            
+            # d = math.sqrt(np.square(new_v[i][0]-self.x_pos) + np.square(new_v[i][1]-self.y_pos))
+            # t = (d+cone_radius)/d
+
+            # new_v[i][0] = (1 - t) * self.x_pos + t * new_v[i][0]
+            # new_v[i][1] = (1 - t) * self.y_pos + t * new_v[i][1]
 
         msg1 = Pose()
         msg1.position.x = new_v[0][0]
@@ -219,11 +243,11 @@ class ConeDetectionNode(Node):
         self.detec_cone1_pub.publish(msg1)
         self.detec_cone2_pub.publish(msg2)
             
-        # ---------------------------------------------------------------------------------------
+        ### ---------------------------------------------------------------------------------------
         
-        # Code when we need to publish position of mean of cones
+        ### Code when we need to publish position of mean of cones
         
-        # mean_centroid = (0.50*(new_v[0][0]+new_v[1][0]), 0.50*(new_v[0][1]+new_v[1][1]))
+        # mean_centroid = [0.50*(new_v[0][0]+new_v[1][0]), 0.50*(new_v[0][1]+new_v[1][1])]
 
         # d = math.sqrt(np.square(mean_centroid[0]-self.x_pos) + np.square(mean_centroid[1]-self.y_pos))
         # t = (d+cone_radius)/d
@@ -244,7 +268,7 @@ class ConeDetectionNode(Node):
         # msg.orientation.w = 1.0
 
         # self.detect_pub.publish(msg)
-        # -------------------------------------------------------------------------------------------------
+        ### -------------------------------------------------------------------------------------------------
         
         return
 
@@ -294,11 +318,11 @@ class ConeDetectionNode(Node):
         return
 
     def cone_detection(self, rgb, camera_name):
-        # Add parameter settings or modifications as needed
+        # Obtaining Results from YOLO model
         results = self.model(rgb, verbose = False)
+        cl_box = [] # Stores box coordinates
 
-        cl_box = []
-
+        # Seperate caminfo for both cameras
         if camera_name == "camera1":
             self.new_centroids = {}
             self.dual_camera = False
@@ -312,6 +336,7 @@ class ConeDetectionNode(Node):
             depth_image = self.depth_img1
         
         else:
+            # Dual Camera is true when both cameras are considered
             self.dual_camera = True
 
             camera_factor = self.caminfo2.k[-1]
@@ -330,21 +355,26 @@ class ConeDetectionNode(Node):
                 x1, y1, x2, y2 = box.xyxy[0]
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
 
+                # List of centers
                 cl_box.append(((x1+x2)/2, (y1+y2)/2))
                 confidence = math.ceil((box.conf[0]*100))/100
                 
+                # If cone has low confidence then it is ignored
                 if(confidence < 0.6):
                     continue
                     
                 cv.rectangle(rgb, (x1, y1), (x2, y2), (255, 0, 255), 3)
 
+                # Center of Bounding Box
                 u = int((x1+x2)/2)
                 v = int((y1+y2)/2)
 
+                # Calculate 3d Coordinates using Depth and camera intrinsic parameters
                 z = depth_image[v][u] / camera_factor
                 x = (u - camera_cx) * z / camera_fx
                 y = (v - camera_cy) * z / camera_fy
 
+                print(camera_name, x, y, z)
                 # confidence
                 confidence = math.ceil((box.conf[0]*100))/100
 

@@ -29,6 +29,7 @@ install(
 install(
   PROGRAMS
   cone_detection/main.py
+  cone_detection/lidar_park.py
   DESTINATION lib/${PROJECT_NAME}
 )
 if(BUILD_TESTING)

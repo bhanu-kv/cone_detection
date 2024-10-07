@@ -14,4 +14,5 @@ def generate_launch_description():
             'use_sim_time',
             default_value='true',),
         Node(package='cone_detection', executable='main.py', output='screen'),
+        Node(package='cone_detection', executable='lidar_park.py', output='screen'),
     ])
