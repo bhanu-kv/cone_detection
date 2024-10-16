@@ -23,31 +23,49 @@ caster_pos_y = 0.45
 cone_radius = 0.15
 rot_angle = -1*(-pi/2 + camera_subtended_angle/2)
 
-def cal_rel_cam(v, tilt_angle, rot_angle):
+def cal_rel_cam(v, tilt_angle, rot_angle, tx, ty, tz):
+
+    T = np.asarray(
+        [[1, 0, 0, tx],
+        [0, 1, 0, ty],
+        [0, 0, 1, tz],
+        [0, 0, 0, 1]]
+    )
+
     rx = np.asarray(
-            [[1, 0, 0],
-            [0, np.cos(0), -np.sin(0)],
-            [0, np.sin(0), np.cos(0)]]
+            [[1, 0, 0, 0],
+            [0, np.cos(0), -np.sin(0), 0],
+            [0, np.sin(0), np.cos(0), 0],
+            [0, 0, 0, 1]]
         )
         
     ry = np.asarray(
-        [[np.cos(tilt_angle), 0 ,np.sin(tilt_angle)],
-        [0, 1, 0],
-        [-np.sin(tilt_angle), 0, np.cos(tilt_angle)]]
+        [[np.cos(tilt_angle), 0 ,np.sin(tilt_angle), 0],
+        [0, 1, 0, 0],
+        [-np.sin(tilt_angle), 0, np.cos(tilt_angle), 0],
+        [0, 0, 0, 1]]
     )
 
     rz = np.asarray(
-        [[np.cos(rot_angle), -np.sin(rot_angle), 0],
-        [np.sin(rot_angle), np.cos(rot_angle), 0],
-        [0, 0, 1]]
+        [[np.cos(rot_angle), -np.sin(rot_angle), 0, 0],
+        [np.sin(rot_angle), np.cos(rot_angle), 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]]
     )
     
-    y, z, x = v[0], v[1], v[2]
-    v = np.dot(rz, np.array([x, y, z]))
-    v = np.dot(ry, v)
-    v = np.dot(rx, v)
+    # y, z, x = v[0], v[1], v[2]
+    x, y, z = v[0], v[1], v[2]
+    new_v = np.dot(T, np.array([x, y, z, 1]))
+    new_v = np.dot(rz, new_v)
+    new_v = np.dot(ry, new_v)
+    new_v = np.dot(rx, new_v)
 
-    return v
+    if v[-1] == "camera1":
+        new_v = [-new_v[1], new_v[0], new_v[2]]
+    else:
+        new_v = [new_v[1], -new_v[0], new_v[2]]
+
+    return new_v
 
 class ConeDetectionNode(Node):
     def __init__(self):
@@ -185,37 +203,43 @@ class ConeDetectionNode(Node):
         v = []
 
         for i in range(1,3):
+            # Specifying parameters tx, ty, tz, rotation angles for 3D coordinate transformation from camera links to base link
             if self.new_centroids[l[-i]][-1] == "camera1":
-                v1 = [-1*self.new_centroids[l[-i]][0], -1*self.new_centroids[l[-i]][1], self.new_centroids[l[-i]][2]]
-                v.append([cal_rel_cam(v=v1, tilt_angle=tilt_angle, rot_angle=self.camera1_orientation), "camera1"])
+                tx = camera_common_radius*math.sin(camera_subtended_angle/2)
+                ty = camera_common_radius*math.cos(camera_subtended_angle/2) - caster_pos_y/2
+                tz = 0.9
+                v1 = [self.new_centroids[l[-i]][0], self.new_centroids[l[-i]][1], self.new_centroids[l[-i]][2], "camera1"]
+                v.append([cal_rel_cam(v=v1, tilt_angle=-1*tilt_angle, rot_angle=-1*self.camera1_orientation, tx=-tx, ty=-ty, tz=-tz), "camera1"])
             else:
-                v2 = [-1*self.new_centroids[l[-i]][0], -1*self.new_centroids[l[-i]][1], self.new_centroids[l[-i]][2]]
-                v.append([cal_rel_cam(v=v2, tilt_angle=tilt_angle, rot_angle=self.camera2_orientation), "camera2"])
+                tx = -camera_common_radius*math.sin(camera_subtended_angle/2)
+                ty = camera_common_radius*math.cos(camera_subtended_angle/2) - caster_pos_y/2
+                tz = 0.9
+                v2 = [self.new_centroids[l[-i]][0], self.new_centroids[l[-i]][1], self.new_centroids[l[-i]][2], "camera2"]
+                v.append([cal_rel_cam(v=v2, tilt_angle=-1*tilt_angle, rot_angle=-1*self.camera2_orientation, tx=-tx, ty=-ty, tz=-tz), "camera2"])
 
         new_v = [[0, 0],
                  [0, 0]]
 
+        # Translation from base link coordinates to odom coordinate
         for i in [-1, -2]:
             x, y = v[i][0][0], v[i][0][1]
-
-            if v[i][-1] == "camera1":
-                x += camera_common_radius*math.sin(camera_subtended_angle/2)
-                y += camera_common_radius*math.cos(camera_subtended_angle/2) - caster_pos_y/2
-            else:
-                x += -camera_common_radius*math.sin(camera_subtended_angle/2)
-                y += camera_common_radius*math.cos(camera_subtended_angle/2) - caster_pos_y/2
             
+            #### This is only needed when converting to odom frame
             # new_v[i][0] = self.x_pos + x*math.cos(self.orientation) - y*math.sin(self.orientation)
             # new_v[i][1] = self.y_pos + x*math.sin(self.orientation) + y*math.cos(self.orientation)
 
-            new_v[i][0] = x*math.cos(self.orientation) - y*math.sin(self.orientation)
-            new_v[i][1] = x*math.sin(self.orientation) + y*math.cos(self.orientation)
+            # This when wrt to base link
+            new_v[i][0] = x
+            new_v[i][1] = y
             
             ## ---------------------------------------------------------------------------------------------------
             ##Code when we need to publish position of 2 cones on different topics 
             
             # d = math.sqrt(np.square(new_v[i][0]-self.x_pos) + np.square(new_v[i][1]-self.y_pos))
-            # t = (d+cone_radius)/d
+            d = math.sqrt(np.square(new_v[i][0]) + np.square(new_v[i][1]))
+            t = (d+cone_radius)/d
+            new_v[i][0] *= t
+            new_v[i][1] *= t
 
             # new_v[i][0] = (1 - t) * self.x_pos + t * new_v[i][0]
             # new_v[i][1] = (1 - t) * self.y_pos + t * new_v[i][1]
@@ -370,9 +394,9 @@ class ConeDetectionNode(Node):
                 v = int((y1+y2)/2)
 
                 # Calculate 3d Coordinates using Depth and camera intrinsic parameters
-                z = depth_image[v][u] / camera_factor
-                x = (u - camera_cx) * z / camera_fx
-                y = (v - camera_cy) * z / camera_fy
+                x = depth_image[v][u] / camera_factor
+                y = -1*(u - camera_cx) * x / camera_fx
+                z = -1*(v - camera_cy) * x / camera_fy
 
                 print(camera_name, x, y, z)
                 # confidence
